@@ -15,8 +15,20 @@ class BusinessDetailsView(APIView):
         if serializer.is_valid():
             serializer.save(merchant=request.merchant)
             # Update the KYC status
-            KYCStatus.objects.update_or_create(merchant=request.merchant, defaults={'completed_business_details': True})
-            return Response({'message': 'Business details saved. Continue to Business Documents.'}, status=status.HTTP_201_CREATED)
+            KYCStatus.objects.update_or_create(
+                merchant=request.merchant,
+                defaults={'completed_business_details': True}
+            )
+            return Response(
+                {'message': 'Business details saved. Continue to Business Documents.'},
+                status=status.HTTP_201_CREATED
+            )
+        
+        return Response(
+            {'errors': serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
 
 
 class BusinessDocumentView(APIView):
