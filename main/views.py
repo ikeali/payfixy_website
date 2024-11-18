@@ -14,10 +14,12 @@ from rest_framework.permissions import AllowAny
 from .serializers import *
 from .models import *
 from decouple import config
+from django.http import HttpResponse
 
 
 
-
+def index(request):
+    return HttpResponse("Hello, world. This is the root page!")
 
 # Simple homepage view
 def homepage(request):
