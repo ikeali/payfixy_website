@@ -25,6 +25,6 @@ urlpatterns = [
     path('', index, name='index'),
     path('admin/', admin.site.urls),
     path('main/', include ('main.urls')),
-    path('kyc', include ('kyc.urls'))
+    path('kyc/', include ('kyc.urls'))
 
 ]

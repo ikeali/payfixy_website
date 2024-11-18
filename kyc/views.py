@@ -18,6 +18,7 @@ class BusinessDetailsView(APIView):
             KYCStatus.objects.update_or_create(merchant=request.merchant, defaults={'completed_business_details': True})
             return Response({'message': 'Business details saved. Continue to Business Documents.'}, status=status.HTTP_201_CREATED)
 
+
 class BusinessDocumentView(APIView):
     permission_classes = [IsAuthenticated]
 
