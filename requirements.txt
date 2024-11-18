@@ -6,11 +6,12 @@ charset-normalizer==2.1.1
 click==8.1.7
 colorama==0.4.6
 cryptography==43.0.3
-dj-database-url==2.2.0
+# dj-database-url==2.2.0
 Django==3.2.24
 django-countries==7.6.1
 djangorestframework==3.12.4
 djangorestframework-simplejwt==5.3.1
+dj-database-url
 gunicorn==22.0.0
 h11==0.14.0
 idna==3.10
