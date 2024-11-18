@@ -16,6 +16,14 @@ from .models import *
 from decouple import config
 
 
+
+
+
+# Simple homepage view
+def homepage(request):
+    return Response("Welcome to PayFixy!")
+
+
 class SignUpView(APIView):
     permission_classes = [AllowAny]
 
