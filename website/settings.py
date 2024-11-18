@@ -92,12 +92,22 @@ WSGI_APPLICATION = 'website.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=f"postgresql://{config('USERR')}:{config('PASSWORD')}@{config('HOST')}:{config('PORT')}/{config('NAME')}",
+#         conn_max_age=600
+#     )
+# }
+
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"postgresql://{config('USERR')}:{config('PASSWORD')}@{config('HOST')}:{config('PORT')}/{config('NAME')}",
-        conn_max_age=600
+        default=config('DATABASE_URL'),
+        conn_max_age=600  # Optional: Set the connection timeout
     )
 }
+
+
 AUTH_USER_MODEL = 'main.User'
 
 
