@@ -13,10 +13,10 @@ class BusinessDetailsView(APIView):
         serializer = BusinessDetailsSerializer(data=request.data)
         
         if serializer.is_valid():
-            serializer.save(merchant=request.merchant)
+            serializer.save(merchant=request.user)
             # Update the KYC status
             KYCStatus.objects.update_or_create(
-                merchant=request.merchant,
+                merchant=request.user,
                 defaults={'completed_business_details': True}
             )
             return Response(
@@ -38,10 +38,10 @@ class BusinessDocumentView(APIView):
         serializer = BusinessDocumentSerializer(data=request.data)
         
         if serializer.is_valid():
-            serializer.save(merchant=request.merchant)
+            serializer.save(merchant=request.user)
             # Update the KYC status
             KYCStatus.objects.update_or_create(
-                merchant=request.merchant, 
+                merchant=request.user, 
                 defaults={'completed_business_details': True}
             )
             return Response({'message': 'Business details saved'}, status=status.HTTP_201_CREATED)
@@ -53,10 +53,10 @@ class BusinessOwnerView(APIView):
         serializer = BusinessOwnerSerializer(data=request.data)
         
         if serializer.is_valid():
-            serializer.save(merchant=request.merchant)
+            serializer.save(merchant=request.user)
             # Update the KYC status
             KYCStatus.objects.update_or_create(
-                merchant=request.merchant, 
+                merchant=request.user, 
                 defaults={'completed_business_details': True}
             )
             return Response({'message': 'Business details saved'}, status=status.HTTP_201_CREATED)
