@@ -92,6 +92,32 @@ WSGI_APPLICATION = 'website.wsgi.application'
 #     }
 # }
 
+
+
+# CORS_ALLOWED_ORIGINS = ["http://localhost:3000",]
+
+if config("ENVIRONMENT") == "DEV":
+    DATABASES = {
+        'default': {
+            'ENGINE': config('ENGINE'),
+            'NAME': config('NAME'),
+            'USER': config('USERR'),
+            'PASSWORD': config('PASSWORD'),
+            'HOST': config('HOST'),
+            'PORT': config('PORT'),
+        }
+    }
+
+elif config("ENVIRONMENT") == "STAG":
+    DATABASES = {
+        'default': dj_database_url.parse(
+            config('DATABASE_URL'),
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+
+
 # DATABASES = {
 #     'default': dj_database_url.config(
 #         default=f"postgresql://{config('USERR')}:{config('PASSWORD')}@{config('HOST')}:{config('PORT')}/{config('NAME')}",
@@ -100,12 +126,12 @@ WSGI_APPLICATION = 'website.wsgi.application'
 # }
 
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        conn_max_age=600  # Optional: Set the connection timeout
-    )
-}
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=config('DATABASE_URL'),
+#         conn_max_age=600  # Optional: Set the connection timeout
+#     )
+# }
 
 
 AUTH_USER_MODEL = 'main.User'
