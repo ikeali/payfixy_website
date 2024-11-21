@@ -15,10 +15,56 @@ class BusinessDocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ['merchant', 'uploaded_at']
 
 
+
+
 class BusinessOwnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessOwner
+        # fields = [
+        #     'role', 'full_name', 'email_address', 'phone_number', 'share_ownership',
+        #     'Bvn', 'home_address', 'location', 'government_id', 'government_id_number', 'date_of_birth'
+           
+        # ]
         fields = '__all__'
+
+    # def validate(self, data):
+    #     """
+    #     Override validate method to check if the BVN and Date of Birth match.
+    #     """
+    #     bvn = data.get('Bvn')
+    #     dob = data.get('date_of_birth')
+    #     full_name = data.get('full_name')
+
+    #     if bvn and dob:
+    #         # You can use the model method for BVN and DOB verification
+    #         business_owner = BusinessOwner(
+    #             full_name=full_name,
+    #             Bvn=bvn,
+    #             date_of_birth=dob
+    #         )
+
+    #         # Now use the verify method defined in your BusinessOwner model
+    #         try:
+    #             business_owner.verify_bvn_and_dob()
+    #         except serializers.ValidationError as e:
+    #             raise e  # Reraise the validation error
+
+    #     return data
+
+    def create(self, validated_data):
+        """
+        Create a BusinessOwner instance.
+        """
+        # If needed, perform any custom creation logic here
+        return super().create(validated_data)
+
+
+    def update(self, instance, validated_data):
+        """
+        Update an existing BusinessOwner instance.
+        """
+        # If needed, perform any custom update logic here
+        return super().update(instance, validated_data)
 
 
 

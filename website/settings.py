@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     'main',
     'kyc'
 ]
@@ -54,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware'
 ]
 
@@ -78,6 +80,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'website.wsgi.application'
 
 
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -92,6 +98,32 @@ WSGI_APPLICATION = 'website.wsgi.application'
 #     }
 # }
 
+
+
+# CORS_ALLOWED_ORIGINS = ["http://localhost:3000",]
+
+if config("ENVIRONMENT") == "DEV":
+    DATABASES = {
+        'default': {
+            'ENGINE': config('ENGINE'),
+            'NAME': config('NAME'),
+            'USER': config('USERR'),
+            'PASSWORD': config('PASSWORD'),
+            'HOST': config('HOST'),
+            'PORT': config('PORT'),
+        }
+    }
+
+elif config("ENVIRONMENT") == "STAG":
+    DATABASES = {
+        'default': dj_database_url.parse(
+            config('DATABASE_URL'),
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+
+
 # DATABASES = {
 #     'default': dj_database_url.config(
 #         default=f"postgresql://{config('USERR')}:{config('PASSWORD')}@{config('HOST')}:{config('PORT')}/{config('NAME')}",
@@ -100,12 +132,12 @@ WSGI_APPLICATION = 'website.wsgi.application'
 # }
 
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        conn_max_age=600  # Optional: Set the connection timeout
-    )
-}
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=config('DATABASE_URL'),
+#         conn_max_age=600  # Optional: Set the connection timeout
+#     )
+# }
 
 
 AUTH_USER_MODEL = 'main.User'
@@ -189,6 +221,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
