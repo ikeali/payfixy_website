@@ -1,7 +1,7 @@
-
+import json
 from rest_framework import status,viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -41,7 +41,7 @@ class BusinessDocumentView(APIView):
 
 
     def post(self, request):
-        print(request.data)  # Debugging step
+        print(request.data)
 
         serializer = BusinessDocumentSerializer(data=request.data)
         
@@ -64,32 +64,23 @@ class BusinessDocumentView(APIView):
         
 
 
-class ValidateBVNAndDOBView(APIView):
-    """
-    API view to validate BVN and DOB before saving.
-    """
-    def post(self, request, *args, **kwargs):
-        bvn = request.data.get('bvn')
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
-        dob = request.data.get('dob')
-        
-        if not bvn or not first_name or not last_name or not dob:
-            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Trigger the background task to verify the BVN and DOB asynchronously
-        # The task runs in the background but we can return the result immediately if necessary.
-        result = verify_bvn_and_dob.apply_async(args=[bvn, first_name, last_name, dob])
-        
-        # Check result immediately or after processing
-        # Assuming the task updates some shared status or database field:
-        verification_status = result.get(timeout=10)  # Get result, set appropriate timeout.
-        
-        if verification_status:
-            return Response({'message': 'BVN and DOB are valid'}, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'Invalid BVN or DOB'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+def verify_bvn(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        bvnNumber = data.get("bvnNumber")
+        firstname = data.get("firstname")
+        lastname = data.get("lastname")
+
+        # Call the verification task
+        task_result = verify_bvn_and_dob(bvnNumber, firstname, lastname)
+        
+        if task_result["status"] == "success" and task_result["data"]["verified"]:
+            return JsonResponse({"status": "success", "message": "BVN verified successfully!", "data": task_result["data"]})
+        else:
+            return JsonResponse({"status": "failure", "message": "BVN verification failed.", "error": task_result["error"]})
+    return JsonResponse({"status": "error", "message": "Invalid request method."}, status=400)
 
 
 
