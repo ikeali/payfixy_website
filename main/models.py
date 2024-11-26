@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser,BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 from django_countries.fields import CountryField
 
 class UserManager(BaseUserManager):
@@ -33,13 +34,14 @@ class User(AbstractBaseUser,PermissionsMixin):
     last_name = models.CharField(max_length=200)
     email = models.EmailField(unique=True)
     is_active = models.BooleanField(default=True)
+    is_email_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
     # Fields for merchants
     business_type = models.CharField(max_length=20, choices=BUSINESS_TYPES, null=False, blank=True)
     business_name = models.CharField(max_length=100, null=False, blank=True)
-    country = models.CharField(max_length=100, null=False)  # Check this
+    country = models.CharField(max_length=100, null=False)  #
 
     # Related fields (such as groups and permissions)
     groups = models.ManyToManyField(
@@ -64,3 +66,16 @@ class User(AbstractBaseUser,PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+
+class OTP(models.Model):
+    email = models.EmailField()  
+    code = models.CharField(max_length=6) 
+    created_at = models.DateTimeField(auto_now_add=True) 
+    expires_at = models.DateTimeField() 
+    is_verified = models.BooleanField(default=False)
+
+
+    def has_expired(self):
+        return timezone.now() > self.expires_at

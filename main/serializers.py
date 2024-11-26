@@ -31,6 +31,7 @@ class SignUpSerializer(serializers.ModelSerializer):
         merchant.save()
         return merchant
 
+    
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
