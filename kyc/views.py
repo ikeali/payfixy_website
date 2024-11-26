@@ -7,7 +7,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import *
 from .serializers import *
-from kyc.tasks import verify_bvn_and_dob
 
 
 class BusinessDetailsView(APIView):
@@ -18,7 +17,6 @@ class BusinessDetailsView(APIView):
         
         if serializer.is_valid():
             serializer.save(merchant=request.user)
-            # Update the KYC status
             KYCStatus.objects.update_or_create(
                 merchant=request.user,
                 defaults={'completed_business_details': True}
@@ -47,7 +45,6 @@ class BusinessDocumentView(APIView):
         
         if serializer.is_valid():
             serializer.save(merchant=request.user)
-            # Update the KYC status
             KYCStatus.objects.update_or_create(
                 merchant=request.user, 
                 defaults={'completed_business_document': True}
@@ -61,26 +58,188 @@ class BusinessDocumentView(APIView):
             {'errors': serializer.errors},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+
+
+class VerifyAccountNumberView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        firstname = request.data.get('firstname')
+        lastname = request.data.get('lastname')
+        accountNumber = request.data.get('accountNumber')
+        bankCode = request.data.get('bankCode')
+
+        # Check if required fields are present
+        if not all([firstname, lastname, accountNumber, bankCode]):
+            return Response(
+                {"error": "Missing required parameters: firstname, lastname, accountNumber, bankCode"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        url = "https://api.qoreid.com/v1/ng/identities/nuban"
+
+        # Prepare the payload with the required fields
+        payload = {
+            "firstname": firstname,
+            "lastname": lastname,
+            "accountNumber": accountNumber,
+            "bankCode": bankCode
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {config('QOREID_TOKEN')}"
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+
+            print("Response Status Code:", response.status_code)
+            print("Response Content:", response.text)
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status", {}).get("status") == "verified":
+                    return Response({"is_verified": True}, status=status.HTTP_200_OK)
+                else:
+                    return Response(
+                        {
+                            "is_verified": False,
+                            "message": "Account verification failed.",
+                            "details": data,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                print("Error response status:", response.status_code)
+                print("Error response details:", response.json())
+                return Response(
+                    {"error": "Unable to verify Account number", "details": response.json()},
+                    status=response.status_code,
+                )
+
+        except Exception as e:
+            print("Error occurred during API request:", str(e))
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class AccountNumberView(APIView):
+    permission_classes = [IsAuthenticated]
+
+
+    def create(self, request, *args, **kwargs):
+        """
+        Override the create method to set the merchant and update KYC status.
+        """
+        serializer = self.get_serializer(data=request.data)
         
-
-
-
-
-def verify_bvn(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        bvnNumber = data.get("bvnNumber")
-        firstname = data.get("firstname")
-        lastname = data.get("lastname")
-
-        # Call the verification task
-        task_result = verify_bvn_and_dob(bvnNumber, firstname, lastname)
+        if serializer.is_valid():
+            # Save the business owner with the authenticated user as the merchant
+            serializer.save(merchant=request.user)
+            
+            
+            # Update or create KYC status for the merchant
+            KYCStatus.objects.update_or_create(
+                merchant=request.user, 
+                defaults={'completed_bank_account': True}
+            )
+            
+            return Response({'message': 'Bank Account saved', 'data': serializer.data}, status=status.HTTP_201_CREATED)
         
-        if task_result["status"] == "success" and task_result["data"]["verified"]:
-            return JsonResponse({"status": "success", "message": "BVN verified successfully!", "data": task_result["data"]})
-        else:
-            return JsonResponse({"status": "failure", "message": "BVN verification failed.", "error": task_result["error"]})
-    return JsonResponse({"status": "error", "message": "Invalid request method."}, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class VerifyBVNView(APIView):
+    """
+    Endpoint for verifying BVN information.
+    """
+    def post(self, request, *args, **kwargs):
+        bvnNumber = request.data.get("bvnNumber")
+        firstname = request.data.get("firstname")
+        lastname = request.data.get("lastname")
+
+        if not bvnNumber or not firstname or not lastname:
+            return Response({"error": "Missing required fields: bvnNumber, firstname, lastname"}, status=status.HTTP_400_BAD_REQUEST)
+
+        url = f"https://api.qoreid.com/v1/ng/identities/bvn-premium/{bvnNumber}"
+
+        payload = {
+            "firstname": firstname,
+            "lastname": lastname,
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {config('QOREID_TOKEN')}"
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+
+            print("Response Status Code:", response.status_code)
+            print("Response Content:", response.text)
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status", {}).get("status") == "verified":
+                    return Response({"is_verified": True}, status=status.HTTP_200_OK)
+                else:
+                    return Response(
+                        {
+                            "is_verified": False,
+                            "message": "BVN verification failed.",
+                            "details": data,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                return Response(
+                    {"error": "Unable to verify BVN", "details": response.json()},
+                    status=response.status_code,
+                )
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+    
+    def get(self, request, bvn_nuban=None, *args, **kwargs):
+        """
+        Fetch account information from the external API.
+        """
+        if not bvn_nuban:
+            return Response(
+                {"error": "Account number (bvn_nuban) is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        url = f"https://api.qoreid.com/v1/banks/{bvn_nuban}"
+        headers = {"accept": "application/json"}
+
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return Response(response.json(), status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "Failed to fetch account information", "details": response.text},
+                    status=response.status_code,
+                )
+        except requests.RequestException as e:
+            return Response(
+                {"error": "An error occurred while fetching account information", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 
 
 
@@ -103,24 +262,23 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
         Override the create method to set the merchant and update KYC status.
         """
         serializer = self.get_serializer(data=request.data)
-        # print(serializer)
         
         if serializer.is_valid():
-            # Save the business owner with the authenticated user as the merchant
             serializer.save(merchant=request.user)
             
             
-            # Update or create KYC status for the merchant
             KYCStatus.objects.update_or_create(
                 merchant=request.user, 
                 defaults={'completed_business_owner': True}
             )
             
-            # Return success response
             return Response({'message': 'Business owner saved', 'data': serializer.data}, status=status.HTTP_201_CREATED)
         
-        # Return validation errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+
 
 
 class KYCSummaryView(APIView):

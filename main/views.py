@@ -15,6 +15,9 @@ from .serializers import *
 from .models import *
 from decouple import config
 from django.http import HttpResponse
+from django.utils.timezone import now, timedelta
+import random
+
 
 
 
@@ -32,9 +35,69 @@ class SignUpView(APIView):
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Merchant created successfully"}, status=status.HTTP_201_CREATED)
+            user = serializer.save(is_active=False, is_email_verified=False)
+
+            # Generate OTP
+            otp_code = f"{random.randint(100000, 999999)}"
+            OTP.objects.create(
+                email=user.email,
+                code=otp_code,
+                created_at=now(),
+                expires_at=now() + timedelta(minutes=10),
+            )
+
+            # Send OTP email
+            send_mail(
+                "Email Verification",
+                f"Your OTP is: {otp_code}",
+                config('EMAIL_HOST_USER'), 
+                [user.email],
+                fail_silently=False,
+            )
+
+            return Response(
+                {"message": "Merchant created successfully. Check your email for OTP verification."},
+                status=status.HTTP_201_CREATED,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp_code = request.data.get('otp')
+
+        if not email or not otp_code:
+            return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Fetch the OTP object
+            otp = OTP.objects.get(email=email, code=otp_code)
+            
+            # Check if the OTP has expired
+            if otp.has_expired():
+                return Response({"error": "OTP has expired."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Mark OTP as verified
+            otp.is_verified = True
+            otp.save()
+
+            # Fetch the User object
+            user = User.objects.get(email=email)
+            user.is_email_verified = True
+            user.is_active = True 
+
+            user.save()
+
+            return Response({"message": "Email verified successfully."}, status=status.HTTP_200_OK)
+
+        except OTP.DoesNotExist:
+            return Response({"error": "Invalid OTP or email."}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -43,66 +106,69 @@ class LoginView(APIView):
 
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
-        print(email)
         password = request.data.get('password')
-        print(password)
 
-        # Authenticate the merchant
-        merchant = authenticate(email=email, password=password)
-        print(merchant)
-        if not merchant:
+        # Authenticate the user
+        user = authenticate(email=email, password=password)
+        if not user:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-
-        # Create JWT token for the merchant
-        refresh = RefreshToken.for_user(merchant)
-        access_token = refresh.access_token
-
-
-        # Generate a login confirmation link
-        uid = urlsafe_base64_encode(force_bytes(merchant.pk))
-        login_link = request.build_absolute_uri(
-            reverse('login-confirm', kwargs={'uidb64': uid})
+        # Generate OTP
+        otp_code = f"{random.randint(100000, 999999)}"
+        OTP.objects.create(
+            email=email,
+            code=otp_code,
+            created_at=now(),
+            expires_at=now() + timedelta(minutes=10),
         )
 
-        # Send the confirmation link via email
         try:
             send_mail(
-                'Confirm Your Login',
-                f'Please click the following link to confirm your login:\n\n{login_link}',
+                'Login OTP',
+                f'Your OTP for login is: {otp_code}',
                 config('EMAIL_HOST_USER'),
-                [merchant.email],
+                [user.email],
                 fail_silently=False,
             )
         except Exception as e:
-            return Response({'error': 'Failed to send confirmation link', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Failed to send OTP', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({
-            'message': 'Login successful',
-            'access_token': str(access_token),
-            'refresh_token': str(refresh),
-        }, status=status.HTTP_200_OK)
-    
+        return Response({'message': 'OTP sent to your email. Please verify to complete login.'}, status=status.HTTP_200_OK)
+
 
 
 class LoginConfirmView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, uidb64, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        otp_code = request.data.get('otp')
+
         try:
-            # Decode the merchant ID from the URL
-            uid = urlsafe_base64_decode(uidb64).decode()
-            merchant = User.objects.get(pk=uid)
-            
-            login(request, merchant)
+            otp = OTP.objects.get(email=email, code=otp_code)
+
+            # Check if the OTP has expired
+            if otp.has_expired():
+                return Response({'error': 'OTP has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            otp.is_verified = True
+            otp.save()
+
+            # Retrieve the user and generate tokens
+            user = User.objects.get(email=email)
+            refresh = RefreshToken.for_user(user)
 
             return Response({
-                'message': 'Login confirmed. You are now logged in.',
-                'user_id': merchant.id
+                'message': 'Login successful.',
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
             }, status=status.HTTP_200_OK)
-        
-        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
-            return Response({'error': 'Invalid login link'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except OTP.DoesNotExist:
+            return Response({'error': 'Invalid OTP or email.'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 
@@ -116,20 +182,23 @@ class ForgotPasswordView(APIView):
             merchant = User.objects.get(email=email)
             print(merchant)
 
-            # Encode the user ID to be used in the reset link
-            uid = urlsafe_base64_encode(str(merchant.pk).encode()) 
-            # Build the password reset link
-            reset_link = self.build_reset_link(request, uid)
+            otp_code = f"{random.randint(100000, 999999)}"
+            OTP.objects.create(
+            email=email,
+            code=otp_code,
+            created_at=now(),
+            expires_at=now() + timedelta(minutes=10),
+        )
 
             send_mail(
                 'Reset Your Password',
-                f'Please click the following link to reset your password: {reset_link}',
+                f'Your OTP for reset password is: {otp_code}',
                 config('EMAIL_HOST_USER'),
                 [merchant.email],
                 fail_silently=False,
             )
 
-            return Response({'message': 'Password reset link sent to email.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'Password otp sent to email.'}, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
    
@@ -137,56 +206,43 @@ class ForgotPasswordView(APIView):
 
 
 
-    def build_reset_link(self, request, uidb64):
-        """
-        This method builds the reset password URL with the user ID.
-        """
-        reset_url = reverse('password-reset-confirm', kwargs={'uidb64': uidb64})
-        
-        # Build the absolute URL to the reset page
-        return request.build_absolute_uri(reset_url)
-
-
-
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, uidb64, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        otp_code = request.data.get('otp')
+        new_password = request.data.get('password')
+
         try:
-            # Decode the user ID
-            uid = urlsafe_base64_decode(uidb64).decode()
-            merchant = User.objects.get(pk=uid)
+            # Validate OTP
+            otp = OTP.objects.get(email=email, code=otp_code)
 
-            # Proceed to show a form or page where the user can reset their password
-            return Response({'message': 'Please submit your new password.'}, status=status.HTTP_200_OK)
+            if otp.has_expired():
+                return Response({'error': 'OTP has expired.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        except User.DoesNotExist:
-            return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            if not otp.is_verified:
+                otp.is_verified = True
+                otp.save()
 
-    def post(self, request, uidb64, *args, **kwargs):
-        try:
-            # Decode the user ID
-            uid = urlsafe_base64_decode(uidb64).decode()
-            merchant = User.objects.get(pk=uid)
-
-            # Get the new password from the request
-            new_password = request.data.get('password')
-
-            # Password validation
+            # Validate password
             if not self.is_valid_password(new_password):
-                return Response({'error': 'Password must be at least 8 characters long, include uppercase and lowercase letters, a number, and a special character.'},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'error': ('Password must be at least 8 characters long, include uppercase and lowercase letters, '
+                              'a number, and a special character.')
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Set the new password
-            merchant.set_password(new_password)
-            merchant.save()
+            # Reset password
+            user = User.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
 
-            return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+            return Response({'message': 'Password reset successful.'}, status=status.HTTP_200_OK)
 
+        except OTP.DoesNotExist:
+            return Response({'error': 'Invalid OTP or email.'}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
-            return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     def is_valid_password(self, password):
         """
