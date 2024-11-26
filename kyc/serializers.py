@@ -14,6 +14,12 @@ class BusinessDocumentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['merchant', 'uploaded_at']
 
+class BankAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankAccount
+        fields = '__all__'
+        read_only_fields = ['merchant', 'account_number', 'bank_name']
+
 
 
 

@@ -13,9 +13,10 @@ router.register(r'business-owner', BusinessOwnerViewSet, basename='business-owne
 
 urlpatterns = [
     path('', include(router.urls)),
-    path("api/verify-bvn", views.verify_bvn, name="verify_bvn"),
     path('business-details/', BusinessDetailsView.as_view(), name='business-details'),
     path('business-documents/', BusinessDocumentView.as_view(), name='business-documents'),
+    path('verify_account_number/', VerifyAccountNumberView.as_view(), name='account_number'),
+    path('verify-bvn/', VerifyBVNView.as_view(), name="verify_bvn"),
     path('kyc-summary/', KYCSummaryView.as_view(), name='kyc-summary'),
 
 ]
