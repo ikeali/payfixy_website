@@ -62,7 +62,7 @@ class BusinessDocument(models.Model):
 class BankAccount(models.Model):
     Merchant = models.ForeignKey(User, on_delete=models.CASCADE)
     bank_name = models.CharField(max_length=50)
-    accoun_number = models.CharField(max_length=10)
+    account_number = models.CharField(max_length=10)
 
 
     def save(self, *args, **kwargs):

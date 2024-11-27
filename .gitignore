@@ -1,2 +1,5 @@
 env/
 settings.ini
+*.pyc
+__pycache__/
+
