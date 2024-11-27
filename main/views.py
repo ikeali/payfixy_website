@@ -29,37 +29,71 @@ def homepage(request):
     return Response("Welcome to PayFixy!")
 
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework import status
+from django.core.mail import send_mail
+from datetime import timedelta
+from django.utils.timezone import now
+from decouple import config
+import random
+from .models import OTP
+from .serializers import SignUpSerializer  
+
+
 class SignUpView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save(is_active=False, is_email_verified=False)
+            try:
+                user = serializer.save(is_active=False, is_email_verified=False)
 
-            # Generate OTP
-            otp_code = f"{random.randint(100000, 999999)}"
-            OTP.objects.create(
-                email=user.email,
-                code=otp_code,
-                created_at=now(),
-                expires_at=now() + timedelta(minutes=10),
-            )
+                # Generate OTP
+                otp_code = f"{random.randint(100000, 999999)}"
+                OTP.objects.create(
+                    email=user.email,
+                    code=otp_code,
+                    created_at=now(),
+                    expires_at=now() + timedelta(minutes=10),
+                )
 
-            # Send OTP email
-            send_mail(
-                "Email Verification",
-                f"Your OTP is: {otp_code}",
-                config('EMAIL_HOST_USER'), 
-                [user.email],
-                fail_silently=False,
-            )
+                send_mail(
+                    "Email Verification",
+                    f"Your OTP is: {otp_code}",
+                    config("EMAIL_HOST_USER"),
+                    [user.email],
+                    fail_silently=False,
+                )
 
-            return Response(
-                {"message": "Merchant created successfully. Check your email for OTP verification."},
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "status_code": status.HTTP_201_CREATED,
+                        "message": "Merchant created successfully. Check your email for OTP verification."
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            except Exception as e:
+                return Response(
+                    {
+                        "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        "error": "An error occurred while processing your request.",
+                        "details": str(e),
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        return Response(
+            {
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "error": "Invalid data provided.",
+                "details": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     
 
 
@@ -71,7 +105,12 @@ class VerifyEmailView(APIView):
         otp_code = request.data.get('otp')
 
         if not email or not otp_code:
-            return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                "error": "Email and OTP are required."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             # Fetch the OTP object
@@ -79,9 +118,13 @@ class VerifyEmailView(APIView):
             
             # Check if the OTP has expired
             if otp.has_expired():
-                return Response({"error": "OTP has expired."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'status_code': status.HTTP_400_BAD_REQUEST,
+                    "error": "OTP has expired."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            # Mark OTP as verified
             otp.is_verified = True
             otp.save()
 
@@ -92,12 +135,28 @@ class VerifyEmailView(APIView):
 
             user.save()
 
-            return Response({"message": "Email verified successfully."}, status=status.HTTP_200_OK)
+            return Response({
+                'status_code': status.HTTP_200_OK,
+                "message": "Email verified successfully."
+                },
+                status=status.HTTP_200_OK
+            )
 
         except OTP.DoesNotExist:
-            return Response({"error": "Invalid OTP or email."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                "error": "Invalid OTP or email."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except User.DoesNotExist:
-            return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'status_code': status.HTTP_404_NOT_FOUND,
+                "error": "User with this email does not exist."
+                },
+                status=status.HTTP_404_NOT_FOUND    
+            )
+
 
 
 
@@ -108,10 +167,26 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
+        # Check if email and password are provided
+        if not email or not password:
+            return Response(
+                {
+                    'status_code': status.HTTP_400_BAD_REQUEST,
+                    'error': 'Email and password are required.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Authenticate the user
         user = authenticate(email=email, password=password)
         if not user:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {
+                    'status_code': status.HTTP_401_UNAUTHORIZED,
+                    'error': 'Invalid credentials'
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
         # Generate OTP
         otp_code = f"{random.randint(100000, 999999)}"
@@ -122,6 +197,7 @@ class LoginView(APIView):
             expires_at=now() + timedelta(minutes=10),
         )
 
+        # Send OTP via email
         try:
             send_mail(
                 'Login OTP',
@@ -131,10 +207,22 @@ class LoginView(APIView):
                 fail_silently=False,
             )
         except Exception as e:
-            return Response({'error': 'Failed to send OTP', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {
+                    'status_code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    'error': 'Failed to send OTP',
+                    'details': str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        return Response({'message': 'OTP sent to your email. Please verify to complete login.'}, status=status.HTTP_200_OK)
-
+        return Response(
+            {
+                'status_code': status.HTTP_200_OK,
+                'message': 'OTP sent to your email. Please verify to complete login.'
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 class LoginConfirmView(APIView):
@@ -144,12 +232,27 @@ class LoginConfirmView(APIView):
         email = request.data.get('email')
         otp_code = request.data.get('otp')
 
+        if not email or not otp_code:
+            return Response(
+                {
+                    'status_code': status.HTTP_400_BAD_REQUEST,
+                    'error': 'Email and OTP are required.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             otp = OTP.objects.get(email=email, code=otp_code)
 
             # Check if the OTP has expired
             if otp.has_expired():
-                return Response({'error': 'OTP has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        'status_code': status.HTTP_400_BAD_REQUEST,
+                        'error': 'OTP has expired.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             otp.is_verified = True
             otp.save()
@@ -158,18 +261,32 @@ class LoginConfirmView(APIView):
             user = User.objects.get(email=email)
             refresh = RefreshToken.for_user(user)
 
-            return Response({
-                'message': 'Login successful.',
-                'access_token': str(refresh.access_token),
-                'refresh_token': str(refresh),
-            }, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    'status_code': status.HTTP_200_OK,
+                    'message': 'Login successful.',
+                    'access_token': str(refresh.access_token),
+                    'refresh_token': str(refresh),
+                },
+                status=status.HTTP_200_OK
+            )
 
         except OTP.DoesNotExist:
-            return Response({'error': 'Invalid OTP or email.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'status_code': status.HTTP_400_BAD_REQUEST,
+                    'error': 'Invalid OTP or email.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except User.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-
+            return Response(
+                {
+                    'status_code': status.HTTP_404_NOT_FOUND,
+                    'error': 'User not found.'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class ForgotPasswordView(APIView):
@@ -198,11 +315,22 @@ class ForgotPasswordView(APIView):
                 fail_silently=False,
             )
 
-            return Response({'message': 'Password otp sent to email.'}, status=status.HTTP_200_OK)
-
+            return Response(
+                {
+                    'status_code': status.HTTP_200_OK,
+                    'message': 'Password otp sent to email.'
+                },
+                status=status.HTTP_200_OK
+            )
         except User.DoesNotExist:
    
-            return Response({'error': 'User with this email does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {
+                    'status_code': status.HTTP_404_NOT_FOUND,
+                    'error': 'User with this email does not exist.'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 
@@ -219,7 +347,12 @@ class PasswordResetConfirmView(APIView):
             otp = OTP.objects.get(email=email, code=otp_code)
 
             if otp.has_expired():
-                return Response({'error': 'OTP has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'status_code': status.HTTP_400_BAD_REQUEST,
+                    'error': 'OTP has expired.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             if not otp.is_verified:
                 otp.is_verified = True
@@ -228,21 +361,39 @@ class PasswordResetConfirmView(APIView):
             # Validate password
             if not self.is_valid_password(new_password):
                 return Response({
+                    'status_code': status.HTTP_400_BAD_REQUEST,
                     'error': ('Password must be at least 8 characters long, include uppercase and lowercase letters, '
                               'a number, and a special character.')
-                }, status=status.HTTP_400_BAD_REQUEST)
+                }, 
+                status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Reset password
             user = User.objects.get(email=email)
             user.set_password(new_password)
             user.save()
 
-            return Response({'message': 'Password reset successful.'}, status=status.HTTP_200_OK)
+            return Response({
+                'status_code': status.HTTP_200_OK,
+                'message': 'Password reset successful.'
+                },
+                status=status.HTTP_200_OK
+            )
 
         except OTP.DoesNotExist:
-            return Response({'error': 'Invalid OTP or email.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': 'Invalid OTP or email.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except User.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': 'User not found.'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
     def is_valid_password(self, password):
         """

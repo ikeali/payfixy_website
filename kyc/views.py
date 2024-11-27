@@ -22,13 +22,20 @@ class BusinessDetailsView(APIView):
                 defaults={'completed_business_details': True}
             )
             return Response(
-                {'message': 'Business details saved. Continue to Business Documents.'},
+                {
+                    'status_code': status.HTTP_201_CREATED,
+                    'message': 'Business details saved. Continue to Business Documents.'
+                },
                 status=status.HTTP_201_CREATED
             )
         
         return Response(
-            {'errors': serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "error": "Invalid data provided.",
+                "details": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -50,16 +57,21 @@ class BusinessDocumentView(APIView):
                 defaults={'completed_business_document': True}
             )
             return Response(
-                {'message': 'Business document saved. Continue to Bank account.'},
+                {
+                    'status_code':status.HTTP_201_CREATED,
+                    'message': 'Business document saved. Continue to Bank account.'
+                },
                 status=status.HTTP_201_CREATED
             )
         
         return Response(
-            {'errors': serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "error": "Invalid data provided.",
+                "details": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
         )
-
-
 
 
 class VerifyAccountNumberView(APIView):
@@ -73,7 +85,10 @@ class VerifyAccountNumberView(APIView):
         # Check if required fields are present
         if not all([firstname, lastname, accountNumber, bankCode]):
             return Response(
-                {"error": "Missing required parameters: firstname, lastname, accountNumber, bankCode"},
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "error": "Missing required parameters: firstname, lastname, accountNumber, bankCode"
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -105,7 +120,8 @@ class VerifyAccountNumberView(APIView):
                     return Response({"is_verified": True}, status=status.HTTP_200_OK)
                 else:
                     return Response(
-                        {
+                        {   
+                            "status_code":status.HTTP_400_BAD_REQUEST,
                             "is_verified": False,
                             "message": "Account verification failed.",
                             "details": data,
@@ -123,8 +139,6 @@ class VerifyAccountNumberView(APIView):
         except Exception as e:
             print("Error occurred during API request:", str(e))
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 class AccountNumberView(APIView):
@@ -148,9 +162,21 @@ class AccountNumberView(APIView):
                 defaults={'completed_bank_account': True}
             )
             
-            return Response({'message': 'Bank Account saved', 'data': serializer.data}, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status_code': status.HTTP_201_CREATED,
+                'message': 'Bank Account saved', 'data': serializer.data
+                },
+                status=status.HTTP_201_CREATED)
+            
+        return Response(
+            {
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "error": "Invalid data provided.",
+                "details": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
 
 
 
@@ -193,6 +219,7 @@ class VerifyBVNView(APIView):
                 else:
                     return Response(
                         {
+                            "status_code": status.HTTP_400_BAD_REQUEST,
                             "is_verified": False,
                             "message": "BVN verification failed.",
                             "details": data,
@@ -201,12 +228,20 @@ class VerifyBVNView(APIView):
                     )
             else:
                 return Response(
-                    {"error": "Unable to verify BVN", "details": response.json()},
+                    {
+                        "status_code": status.HTTP_400_BAD_REQUEST,
+                        "error": "Unable to verify BVN", "details": response.json()
+                    },
                     status=response.status_code,
                 )
 
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "error": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 
@@ -272,13 +307,21 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
                 defaults={'completed_business_owner': True}
             )
             
-            return Response({'message': 'Business owner saved', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({
+                'status_code': status.HTTP_201_CREATED,
+                'message': 'Business owner saved',
+                'data': serializer.data
+                },
+                status=status.HTTP_201_CREATED)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-
-
-
+        return Response(
+            {
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "error": "Invalid data provided.",
+                "details": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class KYCSummaryView(APIView):
