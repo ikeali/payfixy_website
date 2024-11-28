@@ -100,7 +100,7 @@ class BusinessOwner(models.Model):
         ('national id', 'National id')
     ]
     # merchant = models.ForeignKey(User, on_delete=models.CASCADE, default=None)
-    kyc = models.ForeignKey(KYC, related_name='business_owner', on_delete=models.CASCADE,default=None)
+    kyc = models.ForeignKey(KYC, related_name='business_owner', on_delete=models.CASCADE)
     role = models.CharField(max_length=50, choices = ROLE_TYPES)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100, default=None)
