@@ -1,5 +1,6 @@
 import json
 from rest_framework import status,viewsets
+from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
@@ -9,26 +10,63 @@ from .models import *
 from .serializers import *
 
 
+
+class KYCViewSet(viewsets.ModelViewSet):
+    """
+    KYC ViewSet to manage the entire KYC process.
+    Allows each user to access only their own records.
+    """
+    serializer_class = KYCSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return KYC.objects.filter(merchant=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        # Handle creating KYC record
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(merchant=request.user)
+            return Response({
+                'status_code': status.HTTP_201_CREATED,
+                'message': 'KYC created',
+                'data': serializer.data
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class BusinessDetailsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = BusinessDetailsSerializer(data=request.data)
-        
+        # Retrieve or create a KYC instance for the current user
+        kyc, created = KYC.objects.get_or_create(
+            merchant=request.user,
+            defaults={'status': 'In Progress'}
+        )
+
+        # Add the KYC instance to the request data
+        data = request.data.copy()
+        data['kyc'] = kyc.id
+
+        # Validate the serializer with the updated data
+        serializer = BusinessDetailsSerializer(data=data)
+
         if serializer.is_valid():
-            serializer.save(merchant=request.user)
-            KYCStatus.objects.update_or_create(
-                merchant=request.user,
-                defaults={'completed_business_details': True}
-            )
+            serializer.save()
+            kyc.status = "In Progress"
+            kyc.save()
+
             return Response(
                 {
                     'status_code': status.HTTP_201_CREATED,
-                    'message': 'Business details saved. Continue to Business Documents.'
+                    'message': 'Business details saved. Continue to Business Documents.',
                 },
                 status=status.HTTP_201_CREATED
             )
-        
+
         return Response(
             {
                 "status_code": status.HTTP_400_BAD_REQUEST,
@@ -44,26 +82,35 @@ class BusinessDocumentView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-
     def post(self, request):
-        print(request.data)
+        # Retrieve or create a KYC instance for the current user
+        kyc, created = KYC.objects.get_or_create(
+            merchant=request.user,
+            defaults={'status': 'In Progress'}
+        )
 
-        serializer = BusinessDocumentSerializer(data=request.data)
-        
+        # Add the KYC instance to the request data
+        data = request.data.copy()
+        data['kyc'] = kyc.id
+
+        # Validate the serializer with the updated data
+        serializer = BusinessDocumentSerializer(data=data)
+
         if serializer.is_valid():
-            serializer.save(merchant=request.user)
-            KYCStatus.objects.update_or_create(
-                merchant=request.user, 
-                defaults={'completed_business_document': True}
-            )
+            serializer.save()  # Save the business document
+
+            # Update the KYC status
+            kyc.status = "In Progress"
+            kyc.save()
+
             return Response(
                 {
-                    'status_code':status.HTTP_201_CREATED,
-                    'message': 'Business document saved. Continue to Bank account.'
+                    'status_code': status.HTTP_201_CREATED,
+                    'message': 'Business document saved. Continue to Bank account.',
                 },
                 status=status.HTTP_201_CREATED
             )
-        
+
         return Response(
             {
                 "status_code": status.HTTP_400_BAD_REQUEST,
@@ -82,7 +129,6 @@ class VerifyAccountNumberView(APIView):
         accountNumber = request.data.get('accountNumber')
         bankCode = request.data.get('bankCode')
 
-        # Check if required fields are present
         if not all([firstname, lastname, accountNumber, bankCode]):
             return Response(
                 {
@@ -141,43 +187,52 @@ class VerifyAccountNumberView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class AccountNumberView(APIView):
-    permission_classes = [IsAuthenticated]
 
+# class BankAccountView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-        """
-        Override the create method to set the merchant and update KYC status.
-        """
-        serializer = self.get_serializer(data=request.data)
-        
-        if serializer.is_valid():
-            # Save the business owner with the authenticated user as the merchant
-            serializer.save(merchant=request.user)
-            
-            
-            # Update or create KYC status for the merchant
-            KYCStatus.objects.update_or_create(
-                merchant=request.user, 
-                defaults={'completed_bank_account': True}
-            )
-            
-            return Response({
-                'status_code': status.HTTP_201_CREATED,
-                'message': 'Bank Account saved', 'data': serializer.data
-                },
-                status=status.HTTP_201_CREATED)
-            
-        return Response(
-            {
-                "status_code": status.HTTP_400_BAD_REQUEST,
-                "error": "Invalid data provided.",
-                "details": serializer.errors,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+#     def post(self, request, *args, **kwargs):
+#         """
+#         Handle the creation of a BankAccount entry linked to the authenticated user's KYC.
+#         """
+#         # Retrieve or create the KYC instance for the current user
+#         kyc, created = KYC.objects.get_or_create(
+#             merchant=request.user,
+#             defaults={'status': 'In Progress'}
+#         )
 
+#         # Include the `kyc` reference in the request data
+#         data = request.data.copy()
+#         data['kyc'] = kyc.id
 
+#         # Validate and save the data using the serializer
+#         serializer = BankAccountSerializer(data=data)
+
+#         if serializer.is_valid():
+#             serializer.save()  # Save the bank account entry
+
+#             # Update the KYC status
+#             kyc.status = "In Progress"  # Optional: Adjust the KYC status if needed
+#             kyc.save()
+
+#             return Response(
+#                 {
+#                     'status_code': status.HTTP_201_CREATED,
+#                     'message': 'Bank account saved. Proceed to the next step.',
+#                     'data': serializer.data
+#                 },
+#                 status=status.HTTP_201_CREATED
+#             )
+
+#         # Return an error response if validation fails
+#         return Response(
+#             {
+#                 "status_code": status.HTTP_400_BAD_REQUEST,
+#                 "error": "Invalid data provided.",
+#                 "details": serializer.errors,
+#             },
+#             status=status.HTTP_400_BAD_REQUEST,
+#         )
 
 
 
@@ -276,8 +331,6 @@ class VerifyBVNView(APIView):
 
 
 
-
-
 class BusinessOwnerViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing BusinessOwner records.
@@ -324,10 +377,56 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
         )
 
 
-class KYCSummaryView(APIView):
+class KYCReviewViewSet(viewsets.ViewSet):
+    """
+    Viewset to get a summary of all KYC steps filled so far.
+    """
     permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        kyc = KYC.objects.get(merchant=request.user, status='In Progress')
+        business_details = BusinessDetails.objects.filter(kyc=kyc)
+        business_documents = BusinessDocument.objects.filter(kyc=kyc)
+        # bank_account = BankAccount.objects.filter(kyc=kyc)
+        business_owner = BusinessOwner.objects.filter(kyc=kyc)
+
+        return Response({
+            'business_details': BusinessDetailsSerializer(business_details, many=True).data,
+            'business_documents': BusinessDocumentSerializer(business_documents, many=True).data,
+            # 'bank_account': BankAccountSerializer(bank_account, many=True).data,
+            'business_owner': BusinessOwnerSerializer(business_owner, many=True).data
+        })
     
-    def get(self, request):
-        merchant = request.user
-        serializer = KYCSummarySerializer(merchant)
-        return Response(serializer.data)
+    @action(detail=False, methods=['post'], url_path='submit')
+    def submit(self, request, *args, **kwargs):
+        """
+        Mark the KYC as completed after reviewing all steps.
+        """
+        try:
+            kyc = KYC.objects.get(merchant=request.user, status='In Progress')
+        except KYC.DoesNotExist:
+            return Response(
+                {'error': 'No KYC in progress for this user.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Validate that all steps are completed
+        if not all([
+            BusinessDetails.objects.filter(kyc=kyc).exists(),
+            BusinessDocument.objects.filter(kyc=kyc).exists(),
+            # BankAccount.objects.filter(kyc=kyc).exists(),
+            BusinessOwner.objects.filter(kyc=kyc).exists()
+        ]):
+            return Response(
+                {'error': 'All KYC steps must be completed before submission.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Mark KYC as completed
+        kyc.status = 'Completed'
+        kyc.save()
+
+        return Response(
+            {'message': 'KYC successfully submitted.'},
+            status=status.HTTP_200_OK
+        )

@@ -10,20 +10,24 @@ from django.core.validators import RegexValidator, EmailValidator
 
 from decouple import config
 
-class KYCStatus(models.Model):
-    merchant = models.OneToOneField(User, on_delete=models.CASCADE)
-    completed_business_details = models.BooleanField(default=False)
-    completed_business_documents = models.BooleanField(default=False)
-    completed_bank_account = models.BooleanField(default=False)
-    completed_business_owner = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f"KYC status for {self.merchant.email}"
+class KYC(models.Model):
 
+    STATUS =[
+        ('in_progress', 'In progress'),
+        ('completed', 'Completed')
+    ]
+    merchant = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.CharField(max_length=50, choices=STATUS, null=False, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+   
 
 
 class BusinessDetails(models.Model): 
-    merchant = models.OneToOneField(User, on_delete=models.CASCADE)
+    # merchant = models.OneToOneField(User, on_delete=models.CASCADE)
+    kyc = models.ForeignKey(KYC, related_name='business_details', on_delete=models.CASCADE, default=None)
     business_name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20, validators=[RegexValidator(regex=r'^\+?1?\d{9,15}$',
                 message="Phone number must be in the format: '+999999999'. Up to 15 digits allowed."
@@ -40,8 +44,9 @@ class BusinessDetails(models.Model):
 
 
 class BusinessDocument(models.Model):
-    merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='business_documents')
-    cac_reg_number= models.CharField(max_length=50)
+    # merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='business_documents')
+    kyc = models.ForeignKey(KYC, related_name='business_documents', on_delete=models.CASCADE,default=None)
+    cac_reg_number= models.CharField(max_length=100)
     cac_document = models.FileField(upload_to='kyc_documents/', validators=[validate_file_type])
     memorandum_and_article_association = models.FileField(upload_to='kyc_documents/')
     proof_of_address = models.BooleanField(default=False)
@@ -59,10 +64,11 @@ class BusinessDocument(models.Model):
         return decrypt_data(self.cac_reg_number)
 
  
-class BankAccount(models.Model):
-    Merchant = models.ForeignKey(User, on_delete=models.CASCADE)
-    bank_name = models.CharField(max_length=50)
-    account_number = models.CharField(max_length=10)
+# class BankAccount(models.Model):
+#     # Merchant = models.ForeignKey(User, on_delete=models.CASCADE)
+#     kyc = models.ForeignKey(KYC, related_name='bank_account', on_delete=models.CASCADE)
+#     bank_name = models.CharField(max_length=50)
+#     account_number = models.CharField(max_length=10)
 
 
     def save(self, *args, **kwargs):
@@ -93,7 +99,8 @@ class BusinessOwner(models.Model):
         ('international passport', 'International Passport'),
         ('national id', 'National id')
     ]
-    merchant = models.ForeignKey(User, on_delete=models.CASCADE, default=None)
+    # merchant = models.ForeignKey(User, on_delete=models.CASCADE, default=None)
+    kyc = models.ForeignKey(KYC, related_name='business_owner', on_delete=models.CASCADE,default=None)
     role = models.CharField(max_length=50, choices = ROLE_TYPES)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100, default=None)
