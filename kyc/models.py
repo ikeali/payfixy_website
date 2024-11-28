@@ -112,7 +112,7 @@ class BusinessOwner(models.Model):
     ]
     )
     share_ownership = models.CharField(max_length=100, choices=SHARE_OWNERSHIP_CHOICES)
-    bvn = models.CharField(max_length=11)
+    bvn = models.CharField(max_length=255)
     home_address = models.CharField(max_length=100)
     location= models.CharField(max_length=100)
     government_id = models.CharField(max_length=100, choices=GOVERNMENT_ID)

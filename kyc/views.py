@@ -349,16 +349,23 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
         """
         Override the create method to set the merchant and update KYC status.
         """
+       
+       # Retrieve or create a KYC instance for the current user
+        kyc, created = KYC.objects.get_or_create(
+            merchant=request.user,
+            defaults={'status': 'In Progress'}
+        )
+
+        # Add the KYC instance to the request data
+        data = request.data.copy()
+        data['kyc'] = kyc.id
+
+       
         serializer = self.get_serializer(data=request.data)
         
         if serializer.is_valid():
-            serializer.save(merchant=request.user)
+            serializer.save()
             
-            
-            KYCStatus.objects.update_or_create(
-                merchant=request.user, 
-                defaults={'completed_business_owner': True}
-            )
             
             return Response({
                 'status_code': status.HTTP_201_CREATED,

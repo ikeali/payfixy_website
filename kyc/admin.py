@@ -5,3 +5,4 @@ from .models import *
 admin.site.register(BusinessDetails)
 admin.site.register(BusinessDocument)
 admin.site.register(BusinessOwner)
+admin.site.register(KYC)

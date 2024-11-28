@@ -6,7 +6,7 @@ from .views import BusinessOwnerViewSet
 
 router = DefaultRouter()
 router.register(r'business-owner', BusinessOwnerViewSet, basename='business-owner')
-router.register(r'kyc', KYCViewSet, basename='kyc')
+router.register(r'start_kyc', KYCViewSet, basename='start_kyc')
 router.register(r'kyc-review', KYCReviewViewSet, basename='kyc-review')
 
 
