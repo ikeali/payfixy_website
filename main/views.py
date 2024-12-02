@@ -160,6 +160,58 @@ class VerifyEmailView(APIView):
 
 
 
+# class LoginView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request, *args, **kwargs):
+#         email = request.data.get('email')
+#         password = request.data.get('password')
+
+#         # Check if email and password are provided
+#         if not email or not password:
+#             return Response(
+#                 {
+#                     'status_code': status.HTTP_400_BAD_REQUEST,
+#                     'error': 'Email and password are required.'
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         # Authenticate the user
+#         user = authenticate(email=email, password=password)
+#         if not user:
+#             return Response(
+#                 {
+#                     'status_code': status.HTTP_401_UNAUTHORIZED,
+#                     'error': 'Invalid credentials'
+#                 },
+#                 status=status.HTTP_401_UNAUTHORIZED
+#             )
+    
+#         # Generate OTP
+#         otp_code = f"{random.randint(100000, 999999)}"
+#         OTP.objects.create(
+#             email=email,
+#             code=otp_code,
+#             created_at=now(),
+#             expires_at=now() + timedelta(minutes=10),
+#         )
+
+#         user = User.objects.get(email=email)
+#         refresh = RefreshToken.for_user(user)
+
+#         return Response(
+#             {
+#                 'status_code': status.HTTP_200_OK,
+#                 'message': 'Login successful.',
+#                 'access_token': str(refresh.access_token),
+#                 'refresh_token': str(refresh),
+#             },
+#             status=status.HTTP_200_OK
+#         )
+
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -197,8 +249,11 @@ class LoginView(APIView):
             expires_at=now() + timedelta(minutes=10),
         )
 
-        user = User.objects.get(email=email)
+        # Generate tokens
         refresh = RefreshToken.for_user(user)
+
+        # Serialize user data
+        user_data = UserSerializer(user).data
 
         return Response(
             {
@@ -206,9 +261,11 @@ class LoginView(APIView):
                 'message': 'Login successful.',
                 'access_token': str(refresh.access_token),
                 'refresh_token': str(refresh),
+                'user': user_data,  # Include serialized user data
             },
             status=status.HTTP_200_OK
         )
+
 
 # class LoginView(APIView):
 #     permission_classes = [AllowAny]

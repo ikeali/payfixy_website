@@ -3,6 +3,14 @@ from .models import User
 from django_countries import countries
 
 
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        exclude = ["password", "id", 'is_superuser', 'is_staff']
+        
+
+
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     country = serializers.CharField()

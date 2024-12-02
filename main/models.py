@@ -1,3 +1,4 @@
+from uuid import uuid4
 from django.contrib.auth.models import AbstractBaseUser,BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
@@ -23,46 +24,66 @@ class UserManager(BaseUserManager):
         user = self.create_user(email, password, **extra_fields)
         return user
 
-class User(AbstractBaseUser,PermissionsMixin):
-
+class User(AbstractBaseUser, PermissionsMixin):
     BUSINESS_TYPES = [
         ('for_profit', 'For Profit Business'),
         ('not_for_profit', 'Not For Profit Business'),
     ]
 
-    first_name = models.CharField(max_length=200)
-    last_name = models.CharField(max_length=200)
-    email = models.EmailField(unique=True)
-    is_active = models.BooleanField(default=True)
-    is_email_verified = models.BooleanField(default=False)
-    is_staff = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
+    id = models.AutoField(primary_key=True)
+    uuid = models.UUIDField(primary_key=False, default=uuid4)
 
-    # Fields for merchants
-    business_type = models.CharField(max_length=20, choices=BUSINESS_TYPES, null=False, blank=True)
-    business_name = models.CharField(max_length=100, null=False, blank=True)
-    country = models.CharField(max_length=100, null=False)  #
+    # Basic user fields
+    first_name = models.CharField(max_length=200, verbose_name="First Name")
+    last_name = models.CharField(max_length=200, verbose_name="Last Name")
+    email = models.EmailField(unique=True, verbose_name="Email Address")
+    is_active = models.BooleanField(default=True, verbose_name="Is Active")
+    is_email_verified = models.BooleanField(default=False, verbose_name="Is Email Verified")
+    is_staff = models.BooleanField(default=False, verbose_name="Is Staff")
+    is_superuser = models.BooleanField(default=False, verbose_name="Is Superuser")
 
-    # Related fields (such as groups and permissions)
+    # Merchant-specific fields
+    business_type = models.CharField(
+        max_length=20,
+        choices=BUSINESS_TYPES,
+        null=False,
+        blank=True,
+        verbose_name="Business Type"
+    )
+    business_name = models.CharField(
+        max_length=100,
+        null=False,
+        blank=True,
+        verbose_name="Business Name"
+    )
+    country = models.CharField(max_length=100, null=False, verbose_name="Country")
+
+    # Related fields for groups and permissions
     groups = models.ManyToManyField(
         'auth.Group',
-        verbose_name='groups',
+        verbose_name="Groups",
         blank=True,
         related_name='custom_user_set',
         related_query_name='custom_user',
     )
     user_permissions = models.ManyToManyField(
         'auth.Permission',
-        verbose_name='user permissions',
+        verbose_name="User Permissions",
         blank=True,
         related_name='custom_user_permissions',
         related_query_name='custom_user_permissions',
     )
 
+    # Customizing the authentication fields
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = []  # Add fields here if they are required during user creation
 
+    # Custom manager
     objects = UserManager()
+
+    class Meta:
+        verbose_name = "User"
+        verbose_name_plural = "Users"
 
     def __str__(self):
         return self.email
