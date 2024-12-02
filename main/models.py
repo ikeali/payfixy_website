@@ -2,7 +2,6 @@ from uuid import uuid4
 from django.contrib.auth.models import AbstractBaseUser,BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
-from django_countries.fields import CountryField
 
 class UserManager(BaseUserManager):
     def create_user(self, email=None, password=None, **extra_fields):
@@ -33,12 +32,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.AutoField(primary_key=True)
     uuid = models.UUIDField(primary_key=False, default=uuid4)
 
-    # Basic user fields
     first_name = models.CharField(max_length=200, verbose_name="First Name")
     last_name = models.CharField(max_length=200, verbose_name="Last Name")
     email = models.EmailField(unique=True, verbose_name="Email Address")
     is_active = models.BooleanField(default=True, verbose_name="Is Active")
-    is_email_verified = models.BooleanField(default=False, verbose_name="Is Email Verified")
+    # is_email_verified = models.BooleanField(default=False, verbose_name="Is Email Verified")
     is_staff = models.BooleanField(default=False, verbose_name="Is Staff")
     is_superuser = models.BooleanField(default=False, verbose_name="Is Superuser")
 

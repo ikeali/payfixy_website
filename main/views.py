@@ -130,7 +130,7 @@ class VerifyEmailView(APIView):
 
             # Fetch the User object
             user = User.objects.get(email=email)
-            user.is_email_verified = True
+            # user.is_email_verified = True
             user.is_active = True 
 
             user.save()
