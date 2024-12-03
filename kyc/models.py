@@ -5,6 +5,7 @@ from utility.encryption import encrypt_data, decrypt_data
 from utility.validator import validate_file_type
 import requests
 from .tasks import verify_bvn_and_dob
+from cloudinary.models import CloudinaryField
 
 from django.core.validators import RegexValidator, EmailValidator
 
@@ -47,8 +48,8 @@ class BusinessDocument(models.Model):
     # merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='business_documents')
     kyc = models.ForeignKey(KYC, related_name='business_documents', on_delete=models.CASCADE,default=None)
     cac_reg_number= models.CharField(max_length=100)
-    cac_document = models.FileField(upload_to='kyc_documents/', validators=[validate_file_type])
-    memorandum_and_article_association = models.FileField(upload_to='kyc_documents/')
+    cac_document = CloudinaryField('file', folder='kyc_documents/',validators=[validate_file_type])
+    memorandum_and_article_association = CloudinaryField('file', folder='kyc_documents/')
     proof_of_address = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
