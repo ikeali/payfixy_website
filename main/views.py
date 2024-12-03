@@ -49,7 +49,7 @@ class SignUpView(APIView):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                user = serializer.save(is_active=False, is_email_verified=False)
+                user = serializer.save(is_active=False)
 
                 # Generate OTP
                 otp_code = f"{random.randint(100000, 999999)}"
