@@ -90,7 +90,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class OTP(models.Model):
     email = models.EmailField()  
-    # code = models.CharField(max_length=6) 
+    code = models.CharField(max_length=6) 
     created_at = models.DateTimeField(auto_now_add=True) 
     expires_at = models.DateTimeField() 
     is_verified = models.BooleanField(default=False)
