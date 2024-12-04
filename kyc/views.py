@@ -41,25 +41,10 @@ class KYCViewSet(viewsets.ModelViewSet):
 class BusinessDetailsView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
-
-        user_uuid = self.kwargs.get('uuid')
-        if not user_uuid:
-            return Response(
-                {"error": "User UUID is required."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        user = User.objects.filter(uuid=user_uuid).first()
-        if not user:
-            return Response(
-                {"error": "User not found with the provided UUID."}, 
-                status=status.HTTP_400_BAD_REQUEST
-        )
-
+    def post(self, request):
         # Retrieve or create a KYC instance for the current user
         kyc, created = KYC.objects.get_or_create(
-            merchant=user,
+            merchant=request.user,
             defaults={'status': 'In Progress'}
         )
 
@@ -106,25 +91,10 @@ class BusinessDocumentView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request, *args, **kwargs):
-
-        user_uuid = self.kwargs.get('uuid')
-        if not user_uuid:
-            return Response(
-                {"error": "User UUID is required."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        user = User.objects.filter(uuid=user_uuid).first()
-        if not user:
-            return Response(
-                {"error": "User not found with the provided UUID."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+    def post(self, request):
         # Retrieve or create a KYC instance for the current user
         kyc, created = KYC.objects.get_or_create(
-            merchant=user,
+            merchant=request.user,
             defaults={'status': 'In Progress'}
         )
 
@@ -377,6 +347,7 @@ class VerifyBVNView(APIView):
             )
 
 
+
 class BusinessOwnerViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing BusinessOwner records.
@@ -387,39 +358,18 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Return only the records belonging to the user identified by the UUID.
+        Return only the records belonging to the authenticated user.
         """
-        user_uuid = self.kwargs.get('uuid')
-        if not user_uuid:
-            raise ValidationError({"error": "User UUID is required."})
-        
-        user = User.objects.filter(uuid=user_uuid).first()
-        if not user:
-            raise ValidationError({"error": "User not found with the provided UUID."})
-        
-        return BusinessOwner.objects.filter(merchant=user)
+        return BusinessOwner.objects.filter(merchant=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
         Override the create method to set the merchant and update KYC status.
         """
-        user_uuid = self.kwargs.get('uuid')
-        if not user_uuid:
-            return Response(
-                {"error": "User UUID is required."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        user = User.objects.filter(uuid=user_uuid).first()
-        if not user:
-            return Response(
-                {"error": "User not found with the provided UUID."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Retrieve or create a KYC instance for the identified user
+       
+       # Retrieve or create a KYC instance for the current user
         kyc, created = KYC.objects.get_or_create(
-            merchant=user,
+            merchant=request.user,
             defaults={'status': 'In Progress'}
         )
 
@@ -427,26 +377,28 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         data['kyc'] = kyc.id
 
-        # Check if BusinessOwner exists for the KYC
-        business_owner = BusinessOwner.objects.filter(kyc=kyc).first()
-        if business_owner:
+       
+        try:
+            # Check if BusinessDetails exists for the KYC
+            business_owner = BusinessOwner.objects.get(kyc=kyc)
+
             serializer = BusinessOwnerSerializer(
                 business_owner, data=data, partial=False
             )
-        else:
+        except BusinessOwner.DoesNotExist:
             serializer = BusinessOwnerSerializer(data=data)
 
         if serializer.is_valid():
-            serializer.save(merchant=user, kyc=kyc)  # Associate with identified user and KYC
-            return Response(
-                {
-                    'status_code': status.HTTP_201_CREATED,
-                    'message': 'Business owner saved',
-                    'data': serializer.data
+            serializer.save()
+            
+            
+            return Response({
+                'status_code': status.HTTP_201_CREATED,
+                'message': 'Business owner saved',
+                'data': serializer.data
                 },
-                status=status.HTTP_201_CREATED
-            )
-
+                status=status.HTTP_201_CREATED)
+        
         return Response(
             {
                 "status_code": status.HTTP_400_BAD_REQUEST,
@@ -455,7 +407,6 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
-
 
 
 class KYCReviewViewSet(viewsets.ViewSet):
