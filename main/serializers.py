@@ -5,21 +5,21 @@ from django_countries import countries
 
 
 
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         exclude = ["password", "id", 'is_superuser', 'is_staff']
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        exclude = ["password", "id", 'is_superuser', 'is_staff']
         
 
 
-class UserSerializer(serializers.ModelSerializer):
-    # uuid = serializers.UUIDField(source='uuid', read_only=True)  # The unique identifier is UUID
-    uuid = serializers.UUIDField(read_only=True)  # The unique identifier is UUID
-    kyc = KYCSerializer(read_only=True)  # Serialize KYC data
+# class UserSerializer(serializers.ModelSerializer):
+#     # uuid = serializers.UUIDField(source='uuid', read_only=True)  # The unique identifier is UUID
+#     uuid = serializers.UUIDField(read_only=True)  # The unique identifier is UUID
+#     kyc = KYCSerializer(read_only=True)  # Serialize KYC data
     
-    class Meta:
-        model = User
-        fields = '__all__'
+#     class Meta:
+#         model = User
+#         fields = '__all__'
 
 
 class SignUpSerializer(serializers.ModelSerializer):
