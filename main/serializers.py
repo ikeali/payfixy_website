@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import User
+from kyc.serializers import KYCSerializer
 from django_countries import countries
 
 
@@ -12,17 +13,12 @@ from django_countries import countries
 
 
 class UserSerializer(serializers.ModelSerializer):
-    pk = serializers.UUIDField(source='uuid')
-
+    uuid = serializers.UUIDField(source='uuid', read_only=True)  # The unique identifier is UUID
+    kyc = KYCSerializer(read_only=True)  # Serialize KYC data
+    
     class Meta:
         model = User
-        exclude = ["password", "is_superuser", "is_staff"] 
-
-    def to_representation(self, instance):
-        # Customize the response to include `uuid` as `pk`
-        representation = super().to_representation(instance)
-        representation['pk'] = instance.uuid  # Override pk field with uuid
-        return representation
+        fields = '__all__'
 
 
 class SignUpSerializer(serializers.ModelSerializer):
