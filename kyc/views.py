@@ -37,6 +37,7 @@ class KYCViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 class BusinessDetailsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -51,9 +52,17 @@ class BusinessDetailsView(APIView):
         data = request.data.copy()
         data['kyc'] = kyc.id
 
-        # Validate the serializer with the updated data
-        serializer = BusinessDetailsSerializer(data=data)
+        try:
+            # Check if BusinessDetails exists for the KYC
+            business_details = BusinessDetails.objects.get(kyc=kyc)
 
+            serializer = BusinessDetailsSerializer(
+                business_details, data=data, partial=False
+            )
+        except BusinessDetails.DoesNotExist:
+            serializer = BusinessDetailsSerializer(data=data)
+
+        # Validate and save the serializer
         if serializer.is_valid():
             serializer.save()
             kyc.status = "In Progress"
@@ -62,7 +71,7 @@ class BusinessDetailsView(APIView):
             return Response(
                 {
                     'status_code': status.HTTP_201_CREATED,
-                    'message': 'Business details saved. Continue to Business Documents.',
+                    'message': 'Business details saved or updated successfully.',
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -93,8 +102,15 @@ class BusinessDocumentView(APIView):
         data = request.data.copy()
         data['kyc'] = kyc.id
 
-        # Validate the serializer with the updated data
-        serializer = BusinessDocumentSerializer(data=data)
+        try:
+            # Check if BusinessDetails exists for the KYC
+            business_documument = BusinessDocument.objects.get(kyc=kyc)
+
+            serializer = BusinessDocumentSerializer(
+                business_documument, data=data, partial=False
+            )
+        except BusinessDocument.DoesNotExist:
+            serializer = BusinessDocumentSerializer(data=data)
 
         if serializer.is_valid():
             serializer.save()  # Save the business document
@@ -361,8 +377,16 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
         data['kyc'] = kyc.id
 
        
-        serializer = self.get_serializer(data=request.data)
-        
+        try:
+            # Check if BusinessDetails exists for the KYC
+            business_owner = BusinessOwner.objects.get(kyc=kyc)
+
+            serializer = BusinessOwnerSerializer(
+                business_owner, data=data, partial=False
+            )
+        except BusinessOwner.DoesNotExist:
+            serializer = BusinessOwnerSerializer(data=data)
+
         if serializer.is_valid():
             serializer.save()
             
