@@ -29,8 +29,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('not_for_profit', 'Not For Profit Business'),
     ]
 
-    id = models.AutoField(primary_key=True)
-    uuid = models.UUIDField(primary_key=False, default=uuid4)
+    # id = models.AutoField(primary_key=True)
+    # uuid = models.UUIDField(primary_key=False, default=uuid4)
 
     first_name = models.CharField(max_length=200, verbose_name="First Name")
     last_name = models.CharField(max_length=200, verbose_name="Last Name")
