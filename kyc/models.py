@@ -72,14 +72,14 @@ class BusinessDocument(models.Model):
 #     account_number = models.CharField(max_length=10)
 
 
-    def save(self, *args, **kwargs):
-        if self.account_number:
-            self.account_number = encrypt_data(self.account_number)
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if self.account_number:
+    #         self.account_number = encrypt_data(self.account_number)
+    #     super().save(*args, **kwargs)
 
-    @property
-    def decrypted_cac_reg_number(self):
-        return decrypt_data(self.account_number)
+    # @property
+    # def decrypted_cac_reg_number(self):
+    #     return decrypt_data(self.account_number)
     
 
 class BusinessOwner(models.Model):
