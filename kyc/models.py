@@ -18,7 +18,7 @@ class KYC(models.Model):
         ('in_progress', 'In progress'),
         ('completed', 'Completed')
     ]
-    merchant = models.ForeignKey(User, on_delete=models.CASCADE)
+    merchant = models.OneToOneField(User, on_delete=models.CASCADE, related_name='kyc')
     status = models.CharField(max_length=50, choices=STATUS, null=False, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
