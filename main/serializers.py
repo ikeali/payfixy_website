@@ -4,11 +4,25 @@ from django_countries import countries
 
 
 
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         exclude = ["password", "id", 'is_superuser', 'is_staff']
+        
+
+
 class UserSerializer(serializers.ModelSerializer):
+    pk = serializers.UUIDField(source='uuid')  # Add uuid as pk
+
     class Meta:
         model = User
-        exclude = ["password", "id", 'is_superuser', 'is_staff']
-        
+        exclude = ["password", "is_superuser", "is_staff"] 
+
+    def to_representation(self, instance):
+        # Customize the response to include `uuid` as `pk`
+        representation = super().to_representation(instance)
+        representation['pk'] = instance.uuid  # Override pk field with uuid
+        return representation
 
 
 class SignUpSerializer(serializers.ModelSerializer):
