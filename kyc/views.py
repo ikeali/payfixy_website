@@ -260,9 +260,10 @@ class VerifyBVNView(APIView):
         bvnNumber = request.data.get("bvnNumber")
         firstname = request.data.get("firstname")
         lastname = request.data.get("lastname")
+        date_of_birth = request.data.get("dob")
 
-        if not bvnNumber or not firstname or not lastname:
-            return Response({"error": "Missing required fields: bvnNumber, firstname, lastname"}, status=status.HTTP_400_BAD_REQUEST)
+        if not bvnNumber or not firstname or not lastname or not date_of_birth:
+            return Response({"error": "Missing required fields: bvnNumber, firstname, lastname, date_of_brith"}, status=status.HTTP_400_BAD_REQUEST)
 
         url = f"https://api.qoreid.com/v1/ng/identities/bvn-premium/{bvnNumber}"
 
