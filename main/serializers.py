@@ -8,8 +8,8 @@ from django_countries import countries
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        exclude = ["password", "id", 'is_superuser', 'is_staff']
-        
+        # exclude = ["password", "id", 'is_superuser', 'is_staff']
+        fields = '__all__'
 
 
 # class UserSerializer(serializers.ModelSerializer):
