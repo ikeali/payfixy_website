@@ -8,11 +8,13 @@ class BusinessDetailsSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+
 class BusinessDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessDocument
         fields = '__all__'
         read_only_fields = ['id']
+
 
 
 # class BankAccountSerializer(serializers.ModelSerializer):
@@ -27,6 +29,7 @@ class BusinessOwnerSerializer(serializers.ModelSerializer):
         model = BusinessOwner
         fields = '__all__'
         read_only_fields = ['id']
+
 
 
     def create(self, validated_data):
@@ -50,3 +53,12 @@ class KYCSerializer(serializers.ModelSerializer):
         model = KYC
         fields = ['merchant', 'status']
         read_only_fields = ['id']
+
+
+# class KYCSerializer(serializers.ModelSerializer):
+#     uuid = serializers.UUIDField(read_only=True)
+
+#     class Meta:
+#         model = KYC
+#         fields = ['uuid', 'merchant', 'status']
+

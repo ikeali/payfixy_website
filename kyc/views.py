@@ -11,11 +11,56 @@ from .serializers import *
 
 
 
+# class KYCViewSet(viewsets.ModelViewSet):
+#     """
+#     KYC ViewSet to manage the entire KYC process.
+#     Allows each user to access only their own records.
+#     """
+#     serializer_class = KYCSerializer
+#     permission_classes = [IsAuthenticated]
+
+#     def get_queryset(self):
+#         return KYC.objects.filter(merchant=self.request.user)
+
+#     def create(self, request, *args, **kwargs):
+#         # Handle creating KYC record
+#         serializer = self.get_serializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save(merchant=request.user)
+#             return Response({
+#                 'status_code': status.HTTP_201_CREATED,
+#                 'message': 'KYC created',
+#                 'data': serializer.data
+#                 },
+#                 status=status.HTTP_201_CREATED
+#             )
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class KYCViewSet(viewsets.ModelViewSet):
+#     serializer_class = KYCSerializer
+#     permission_classes = [IsAuthenticated]
+
+#     def get_queryset(self):
+#         return KYC.objects.filter(merchant=self.request.user)
+
+#     def create(self, request, *args, **kwargs):
+#         data = request.data.copy()
+#         data['merchant'] = request.user.id  # Automatically set merchant
+#         serializer = self.get_serializer(data=data)
+        
+#         if serializer.is_valid():
+#             serializer.save(merchant=request.user)
+#             return Response({
+#                 'status_code': status.HTTP_201_CREATED,
+#                 'message': 'KYC created',
+#                 'data': serializer.data
+#             }, status=status.HTTP_201_CREATED)
+        
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 class KYCViewSet(viewsets.ModelViewSet):
-    """
-    KYC ViewSet to manage the entire KYC process.
-    Allows each user to access only their own records.
-    """
     serializer_class = KYCSerializer
     permission_classes = [IsAuthenticated]
 
@@ -23,20 +68,24 @@ class KYCViewSet(viewsets.ModelViewSet):
         return KYC.objects.filter(merchant=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        # Handle creating KYC record
-        serializer = self.get_serializer(data=request.data)
+        # Check if a KYC record already exists for the user
+        if KYC.objects.filter(merchant=request.user).exists():
+            return Response({
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': 'KYC record already exists for this user.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = request.data.copy()
+        serializer = self.get_serializer(data=data)
         if serializer.is_valid():
             serializer.save(merchant=request.user)
             return Response({
                 'status_code': status.HTTP_201_CREATED,
                 'message': 'KYC created',
                 'data': serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
+            }, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 class BusinessDetailsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -51,6 +100,8 @@ class BusinessDetailsView(APIView):
         # Add the KYC instance to the request data
         data = request.data.copy()
         data['kyc'] = kyc.id
+        # data['kyc'] = str(kyc.uuid)
+
 
         try:
             # Check if BusinessDetails exists for the KYC
@@ -101,6 +152,8 @@ class BusinessDocumentView(APIView):
         # Add the KYC instance to the request data
         data = request.data.copy()
         data['kyc'] = kyc.id
+        # data['kyc'] = str(kyc.uuid)
+
 
         try:
             # Check if BusinessDetails exists for the KYC
@@ -219,7 +272,10 @@ class VerifyAccountNumberView(APIView):
 
 #         # Include the `kyc` reference in the request data
 #         data = request.data.copy()
-#         data['kyc'] = kyc.id
+        # data['kyc'] = kyc.id
+        # data['kyc'] = str(kyc.uuid)
+
+
 
 #         # Validate and save the data using the serializer
 #         serializer = BankAccountSerializer(data=data)
@@ -376,6 +432,8 @@ class BusinessOwnerViewSet(viewsets.ModelViewSet):
         # Add the KYC instance to the request data
         data = request.data.copy()
         data['kyc'] = kyc.id
+        # data['kyc'] = str(kyc.uuid)
+
 
        
         try:
