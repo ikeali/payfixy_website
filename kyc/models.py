@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.core.exceptions import ValidationError
 from main.models import User
@@ -18,6 +19,8 @@ class KYC(models.Model):
         ('in_progress', 'In progress'),
         ('completed', 'Completed')
     ]
+    # id = models.AutoField(primary_key=True)
+    # uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     merchant = models.OneToOneField(User, on_delete=models.CASCADE, related_name='kyc')
     status = models.CharField(max_length=50, choices=STATUS, null=False, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -36,7 +39,7 @@ class BusinessDetails(models.Model):
         ]
     )    
     business_location = models.CharField(max_length=100)
-    busienss_description = models.TextField(blank=True, null=True)
+    business_description = models.TextField(blank=True, null=True)
     industry = models.CharField(max_length=50)
     business_address = models.CharField(max_length=255)
     expected_transaction_volume = models.DecimalField(max_digits=15, decimal_places=2)
@@ -45,7 +48,6 @@ class BusinessDetails(models.Model):
 
 
 class BusinessDocument(models.Model):
-    # merchant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='business_documents')
     kyc = models.ForeignKey(KYC, related_name='business_documents', on_delete=models.CASCADE,default=None)
     cac_reg_number= models.CharField(max_length=100)
     cac_document = CloudinaryField('file', folder='kyc_documents/',validators=[validate_file_type])
