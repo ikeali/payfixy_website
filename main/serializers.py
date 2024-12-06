@@ -17,7 +17,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['uuid', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'business_type', 'business_name', 'country']
+        # fields = ['uuid', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'business_type', 'business_name', 'country']
+        fields = '__all__'
 
 
 class SignUpSerializer(serializers.ModelSerializer):
